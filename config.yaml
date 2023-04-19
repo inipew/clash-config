@@ -1,0 +1,121 @@
+---
+rule-providers:
+  Indonesia:
+    type: file
+    behavior: classical
+    path: "./rule_provider/Indonesia.yml"
+proxy-providers:
+  Akun-Oracle:
+    type: file
+    path: "./proxy_provider/oracle.yml"
+    health-check:
+      enable: true
+      url: http://cp.cloudflare.com/generate_204
+      interval: 60
+  Akun-Indo:
+    type: file
+    path: "./proxy_provider/indo.yml"
+    health-check:
+      enable: true
+      url: http://cp.cloudflare.com/generate_204
+      interval: 300
+proxy-groups:
+- name: Pew
+  type: select
+  disable-udp: false
+  proxies:
+  - Oracle
+  - Indo
+  - DIRECT
+  use:
+  - Akun-Oracle
+  - Akun-Indo
+  url: http://cp.cloudflare.com/generate_204
+  interval: '300'
+- name: Oracle
+  type: load-balance
+  strategy: consistent-hashing
+  disable-udp: false
+  use:
+  - Akun-Oracle
+  url: http://cp.cloudflare.com/generate_204
+  interval: '300'
+- name: Indo
+  type: fallback
+  disable-udp: false
+  use:
+  - Akun-Indo
+  url: http://cp.cloudflare.com/generate_204
+  interval: '300'
+- name: "✘ has been banned"
+  type: select
+  proxies:
+  - REJECT
+  - DIRECT
+  - Pew
+dns:
+  nameserver:
+  - dhcp://"eth1"
+  - 192.168.8.1
+  - 8.8.8.8
+  - 8.8.4.4
+  - https://dns.adguard.com/dns-query
+  - https://dns.google/dns-query
+  - tls://dns.adguard.com
+  - tls://dns.google
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  listen: 0.0.0.0:7874
+  fake-ip-filter:
+  - "+.*"
+  default-nameserver:
+  - 192.168.9.1
+  - 192.168.8.1
+  - 192.168.1.1
+  - 192.168.10.1
+  - 8.8.8.8
+  - 8.8.4.4
+  - 114.114.114.114
+  - 119.29.29.29
+  prefer-h3: false
+  fake-ip-range: 198.18.0.1/16
+redir-port: 7892
+tproxy-port: 7895
+port: 7890
+socks-port: 7891
+mixed-port: 7893
+mode: rule
+log-level: silent
+allow-lan: true
+unified-delay: true
+external-controller: 0.0.0.0:9090
+secret: '123456'
+bind-address: "*"
+external-ui: "/usr/share/openclash/ui"
+ipv6: false
+profile:
+  store-selected: true
+  store-fake-ip: true
+rules:
+- AND,((GEOSITE,YOUTUBE),(NETWORK,UDP)),REJECT
+- AND,((DST-PORT,5228-5230),(NETWORK,TCP)),DIRECT
+- GEOSITE,CATEGORY-ADS-ALL,✘ has been banned
+- RULE-SET,Indonesia,Indo
+- DOMAIN-SUFFIX,googlesyndication.com,Pew
+- MATCH,Pew
+geodata-mode: false
+geodata-loader: memconservative
+tcp-concurrent: true
+find-process-mode: 'off'
+global-client-fingerprint: none
+authentication:
+- Clash:H7M5JdKt
+tun:
+  enable: true
+  stack: system
+  device: utun
+  auto-route: false
+  auto-detect-interface: false
+  dns-hijack:
+  - tcp://any:53
